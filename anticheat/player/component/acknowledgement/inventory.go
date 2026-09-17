@@ -29,10 +29,10 @@ func (ack *SetInventoryContents) Run() {
 
 	for index, itemInstance := range ack.contents {
 		if itemInstance.Stack.NetworkID == 0 {
-			inv.SetSlot(index, item.NewStack(&block.Air{}, 0))
+			inv.SetSlot(max(0, index-1), item.NewStack(&block.Air{}, 0))
 		} else {
 			iStack := ack.mPlayer.ConvertToStack(itemInstance.Stack)
-			inv.SetSlot(index, utils.ReadItem(itemInstance.Stack.NBTData, &iStack))
+			inv.SetSlot(max(0, index-1), utils.ReadItem(itemInstance.Stack.NBTData, &iStack))
 		}
 	}
 }
@@ -46,7 +46,7 @@ type SetInventorySlot struct {
 }
 
 func NewSetInventorySlotACK(p *player.Player, windowID uint32, slot uint32, item protocol.ItemInstance) *SetInventorySlot {
-	return &SetInventorySlot{mPlayer: p, windowID: int32(windowID), slot: int32(slot), item: item}
+	return &SetInventorySlot{mPlayer: p, windowID: int32(windowID), slot: int32(max(0, slot-1)), item: item}
 }
 
 func (ack *SetInventorySlot) Run() {
