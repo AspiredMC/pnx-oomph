@@ -123,7 +123,11 @@ func (p *Player) SyncWorld() {
 	for x := int(math32.Floor(pos[0] - 0.05)); x <= int(pos[0]+0.05); x++ {
 		for y := int(math32.Floor(pos[1] - 0.05)); y <= int(pos[1]+0.05); y++ {
 			for z := int(math32.Floor(pos[2] - 0.05)); z <= int(pos[2]+0.05); z++ {
-				p.SyncBlock(df_cube.Pos{x, y, z})
+				blockPos := df_cube.Pos{x, y, z}
+				if _, ok := p.World().Block(blockPos).(block.Stairs); ok {
+					continue
+				}
+				p.SyncBlock(blockPos)
 			}
 		}
 	}
@@ -134,7 +138,10 @@ func (p *Player) SyncBlock(pos df_cube.Pos) {
 	if p.WorldUpdater().HasPendingUpdate(pos) {
 		return
 	}
-	blockRuntimeID := world.BlockRuntimeID(p.World().Block(pos))
+	blockRuntimeID, known := oworld.BlockRuntimeID(p.World().Block(pos))
+	if !known {
+		return
+	}
 	pk := &packet.UpdateBlock{
 		Position: protocol.BlockPos{
 			int32(pos[0]),
@@ -206,15 +213,19 @@ func (p *Player) PlaceBlock(clickedBlockPos, replaceBlockPos df_cube.Pos, face d
 
 func (p *Player) SendBlockUpdates(positions []protocol.BlockPos) {
 	for _, pos := range positions {
+		blockRuntimeID, known := oworld.BlockRuntimeID(p.World().Block(df_cube.Pos{
+			int(pos.X()),
+			int(pos.Y()),
+			int(pos.Z()),
+		}))
+		if !known {
+			continue
+		}
 		p.SendPacketToClient(&packet.UpdateBlock{
-			Position: pos,
-			NewBlockRuntimeID: p.EncodeBlockRuntimeID(world.BlockRuntimeID(p.World().Block(df_cube.Pos{
-				int(pos.X()),
-				int(pos.Y()),
-				int(pos.Z()),
-			}))),
-			Flags: packet.BlockUpdateNeighbours,
-			Layer: 0, // TODO: Implement and account for multi-layer blocks.
+			Position:          pos,
+			NewBlockRuntimeID: p.EncodeBlockRuntimeID(blockRuntimeID),
+			Flags:             packet.BlockUpdateNeighbours,
+			Layer:             0, // TODO: Implement and account for multi-layer blocks.
 		})
 	}
 }
@@ -258,12 +269,7 @@ func (p *Player) handleBlockActions(pk *packet.PlayerAuthInput) {
 				}
 				p.blockBreakProgress = 0.0
 				p.blockBreakInProgress = false
-				p.World().SetBlock(df_cube.Pos{
-					int(action.BlockPos.X()),
-					int(action.BlockPos.Y()),
-					int(action.BlockPos.Z()),
-				}, block.Air{}, nil)
-				p.Dbg.Notify(DebugModeBlockBreaking, true, "(PlayerActionPredictDestroyBlock) broke block at %v", action.BlockPos)
+				p.Dbg.Notify(DebugModeBlockBreaking, true, "(PlayerActionPredictDestroyBlock) accepted block break at %v", action.BlockPos)
 			case protocol.PlayerActionStartBreak, protocol.PlayerActionCrackBreak:
 				if action.Action == protocol.PlayerActionStartBreak {
 					// We assume a potential mispredction here because the client while clicking, think it may need to break
@@ -321,12 +327,7 @@ func (p *Player) handleBlockActions(pk *packet.PlayerAuthInput) {
 				}
 				p.blockBreakProgress = 0.0
 				p.blockBreakInProgress = false
-				p.World().SetBlock(df_cube.Pos{
-					int(p.worldUpdater.BlockBreakPos().X()),
-					int(p.worldUpdater.BlockBreakPos().Y()),
-					int(p.worldUpdater.BlockBreakPos().Z()),
-				}, block.Air{}, nil)
-				p.Dbg.Notify(DebugModeBlockBreaking, true, "(PlayerActionStopBreak) broke block at %v", p.worldUpdater.BlockBreakPos())
+				p.Dbg.Notify(DebugModeBlockBreaking, true, "(PlayerActionStopBreak) accepted block break at %v", p.worldUpdater.BlockBreakPos())
 			}
 			newActions = append(newActions, action)
 		}
@@ -423,14 +424,13 @@ func (p *Player) tryBreakBlock(interactFace cube.Face) bool {
 	p.Dbg.Notify(DebugModeBlockBreaking, true, "block break progress=%.4f", p.blockBreakProgress)
 	if p.blockBreakProgress <= 0.999 {
 		p.SendBlockUpdates([]protocol.BlockPos{breakPos})
-		p.Popup("<red>Broke block too early!</red>")
 		p.Dbg.Notify(DebugModeBlockBreaking, true, "cancelled break action (blockBreakProgress=%.4f)", p.blockBreakProgress)
 		p.blockBreakProgress = 0.0
 		return false
 	}
 	if !p.blockInteractable(cube.Pos{int(breakPos[0]), int(breakPos[1]), int(breakPos[2])}, interactFace) {
 		p.SendBlockUpdates([]protocol.BlockPos{breakPos})
-		p.Popup("<red>Cannot break this block!</red>")
+		// p.Popup("<red>Cannot break this block!</red>")
 		p.blockBreakProgress = 0.0
 		return false
 	}

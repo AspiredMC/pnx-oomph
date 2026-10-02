@@ -1,10 +1,9 @@
 package acknowledgement
 
 import (
-	"github.com/df-mc/dragonfly/server/block"
 	df_cube "github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/oomph-ac/oomph/anticheat/player"
+	oworld "github.com/oomph-ac/oomph/anticheat/world"
 )
 
 type UpdateBlockBatch struct {
@@ -45,10 +44,9 @@ func (ack *UpdateBlockBatch) Run() {
 	}
 	ack.valid = false
 	for pos, bRuntimeID := range ack.updates {
-		b, ok := world.BlockByRuntimeID(bRuntimeID)
+		b, ok := oworld.BlockRegistry.BlockByRuntimeID(bRuntimeID)
 		if !ok {
-			ack.mPlayer.Log().Warn("unable to find block with runtime ID", "blockRuntimeID", bRuntimeID)
-			b = block.Air{}
+			b = oworld.NewUnknownBlock(bRuntimeID)
 		}
 		ack.mPlayer.World().SetBlock(pos, b, nil)
 		ack.mPlayer.WorldUpdater().RemovePendingUpdate(pos, bRuntimeID)

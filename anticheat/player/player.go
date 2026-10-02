@@ -138,6 +138,8 @@ type Player struct {
 	StartUseConsumableTick int64
 	// consumedSlot is the slot of the item that the player started consuming.
 	consumedSlot int
+	// JumpBoostExempt disables movement corrections while jump boost is active.
+	JumpBoostExempt bool
 
 	// conn is the connection to the client, and serverConn is the connection to the server.
 	conn       *minecraft.Conn

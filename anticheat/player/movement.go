@@ -1,10 +1,12 @@
 package player
 
 import (
+	df_world "github.com/df-mc/dragonfly/server/world"
 	"github.com/ethaniccc/float32-cube/cube"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/oomph-ac/oomph/anticheat/game"
 	"github.com/oomph-ac/oomph/anticheat/utils"
+	oworld "github.com/oomph-ac/oomph/anticheat/world"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -311,6 +313,14 @@ func (p *Player) handleMovement(pk *packet.PlayerAuthInput) {
 	velDiff := p.movement.Vel().Sub(p.movement.Client().Vel())
 
 	needsCorrection := posDiff.Len() > p.Opts().Movement.CorrectionThreshold
+	if needsCorrection && (p.movementTouchesUnknownBlock() || p.hasJumpBoost()) {
+		p.movement.SetPos(p.movement.Client().Pos())
+		p.movement.SetVel(p.movement.Client().Vel())
+		p.movement.SetCorrectionCooldown(false)
+		posDiff = mgl32.Vec3{}
+		velDiff = mgl32.Vec3{}
+		needsCorrection = false
+	}
 	if needsCorrection && p.movement.PendingTeleports() == 0 && !hasTeleport &&
 		!pk.InputData.Load(packet.InputFlagJumpPressedRaw) && !hasKnockback {
 		p.movement.Sync()
@@ -383,4 +393,29 @@ func (p *Player) handleMovement(pk *packet.PlayerAuthInput) {
 	// other players will be unable to see if another client is using a cheat to modify their movement (e.g - fly). Of course, that is
 	// granted that the movement scenario is supported by Oomph.
 	pk.Position = finalPos.Add(mgl32.Vec3{0, game.DefaultPlayerHeightOffset + 0.001})
+}
+
+func (p *Player) movementTouchesUnknownBlock() bool {
+	return bboxTouchesCorrectionExemptBlock(p.movement.BoundingBox(), p.World()) ||
+		bboxTouchesCorrectionExemptBlock(p.movement.ClientBoundingBox(), p.World())
+}
+
+func (p *Player) hasJumpBoost() bool {
+	if p.JumpBoostExempt {
+		return true
+	}
+	_, ok := p.Effects().Get(packet.EffectJumpBoost)
+	return ok
+}
+
+func bboxTouchesCorrectionExemptBlock(bb cube.BBox, src df_world.BlockSource) bool {
+	for result := range utils.NearbyBlockCollisions(bb.Grow(0.05), src) {
+		if _, ok := result.Block.(oworld.UnknownBlock); ok {
+			return true
+		}
+		if utils.IsFence(result.Block) || utils.IsFenceGate(result.Block) {
+			return true
+		}
+	}
+	return false
 }

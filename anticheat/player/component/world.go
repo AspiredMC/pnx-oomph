@@ -198,7 +198,7 @@ func (c *WorldUpdaterComponent) AttemptItemInteractionWithBlock(pk *packet.Inven
 	case *block.Air:
 		// This only happens when Dragonfly is unsure of what the item is (unregistered), so we use the client-authoritative block in hand.
 		c.mPlayer.Dbg.Notify(player.DebugModeBlockPlacement, true, "called c.mPlayer.PlaceBlock: using client-authoritative block in hand")
-		if b, ok := df_world.BlockByRuntimeID(c.mPlayer.DecodeBlockRuntimeID(uint32(dat.HeldItem.Stack.BlockRuntimeID))); ok {
+		if b, ok := oworld.BlockRegistry.BlockByRuntimeID(c.mPlayer.DecodeBlockRuntimeID(uint32(dat.HeldItem.Stack.BlockRuntimeID))); ok {
 			c.mPlayer.Dbg.Notify(player.DebugModeBlockPlacement, true, "placing block with runtime ID: %d", dat.HeldItem.Stack.BlockRuntimeID)
 
 			// If the block at the position is not replacable, we want to place the block on the side of the block.
@@ -378,7 +378,7 @@ func (c *WorldUpdaterComponent) QueueBlockPlacement(clickedBlockPos, placedBlock
 	}
 
 	c.clientPlacedBlocks[placedBlockPos] = newChainedBlockPlacement(
-		df_world.BlockRuntimeID(c.mPlayer.World().Block(placedBlockPos)),
+		blockRuntimeID(c.mPlayer.World().Block(placedBlockPos)),
 		parentFace,
 		c.clientPlacedBlocks[clickedBlockPos],
 	)
@@ -416,14 +416,13 @@ func (c *WorldUpdaterComponent) Flush() {
 
 	blockUpdates := c.batchedBlockUpdates.Blocks()
 	for pos, bRuntimeID := range blockUpdates {
-		b, ok := df_world.BlockByRuntimeID(bRuntimeID)
+		b, ok := oworld.BlockRegistry.BlockByRuntimeID(bRuntimeID)
 		if !ok {
-			c.mPlayer.Log().Warn("unable to find block with runtime ID", "blockRuntimeID", bRuntimeID)
-			b = block.Air{}
+			b = oworld.NewUnknownBlock(bRuntimeID)
 		}
 		// We will consider the block placement rejected if the new block runtime ID is equal to the previous block runtime ID pre-placement.
 		if pl, ok := c.clientPlacedBlocks[pos]; ok && networkOpts.MaxGhostBlockChain >= 0 {
-			placementAllowed := df_world.BlockRuntimeID(b) != pl.prePlacedBlockRID
+			placementAllowed := blockRuntimeID(b) != pl.prePlacedBlockRID
 			if !placementAllowed {
 				c.mPlayer.Dbg.Notify(player.DebugModeBlockPlacement, true, "placement NOT allowed at %v", pos)
 			} else {
@@ -450,6 +449,11 @@ func (c *WorldUpdaterComponent) Flush() {
 		c.mPlayer.ACKs().Add(c.batchedBlockUpdates)
 	}
 	c.batchedBlockUpdates = acknowledgement.NewUpdateBlockBatchACK(c.mPlayer)
+}
+
+func blockRuntimeID(b df_world.Block) uint32 {
+	runtimeID, _ := oworld.BlockRuntimeID(b)
+	return runtimeID
 }
 
 func (c *WorldUpdaterComponent) Tick() {

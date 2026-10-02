@@ -889,13 +889,26 @@ func (mc *AuthoritativeMovementComponent) ServerUpdate(pk packet.Packet) {
 	switch pk := pk.(type) {
 	case *packet.MobEffect:
 		if pk.EntityRuntimeID == mc.mPlayer.RuntimeId {
-			mc.mPlayer.ACKs().Add(acknowledgement.NewPlayerEffectsACK(
+			ack := acknowledgement.NewPlayerEffectsACK(
 				mc.mPlayer,
 				pk.EffectType,
 				pk.Amplifier,
 				pk.Duration,
 				pk.Operation,
-			))
+			)
+			switch pk.EffectType {
+			case packet.EffectJumpBoost:
+				ack.Run()
+				if pk.Operation == packet.MobEffectAdd || pk.Operation == packet.MobEffectModify {
+					mc.mPlayer.JumpBoostExempt = true
+				} else {
+					mc.mPlayer.JumpBoostExempt = false
+				}
+			case packet.EffectSlowFalling:
+				ack.Run()
+			default:
+				mc.mPlayer.ACKs().Add(ack)
+			}
 		}
 	case *packet.MoveActorAbsolute:
 		if utils.HasFlag(uint64(pk.Flags), packet.MoveFlagTeleport) {

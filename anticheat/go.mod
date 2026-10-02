@@ -6,9 +6,9 @@ replace github.com/df-mc/dragonfly => github.com/oomph-ac/dragonfly v0.0.0-20260
 
 replace github.com/oomph-ac/oomph/transferproxy => ../transferproxy
 
-replace github.com/sandertv/go-raknet => ../go-raknet
+replace github.com/sandertv/go-raknet => ../../go-raknet
 
-replace github.com/sandertv/gophertunnel => ../gophertunnel
+replace github.com/sandertv/gophertunnel => ../../gophertunnel
 
 require (
 	github.com/chewxy/math32 v1.11.1

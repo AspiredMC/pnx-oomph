@@ -105,12 +105,14 @@ func (w *World) Block(pos df_cube.Pos) world.Block {
 		return block.Air{}
 	}
 
+	localX, localZ := uint8(blockPos[0]&15), uint8(blockPos[2]&15)
+
 	// TODO: Implement and account for multi-layer blocks.
-	rid := c.Block(uint8(blockPos[0]), int16(blockPos[1]), uint8(blockPos[2]), 0)
-	if b, ok := world.BlockByRuntimeID(rid); ok {
+	rid := c.Block(localX, int16(blockPos[1]), localZ, 0)
+	if b, ok := BlockRegistry.BlockByRuntimeID(rid); ok {
 		return b
 	}
-	return block.Air{}
+	return NewUnknownBlock(rid)
 }
 
 // SetBlock sets the block at the position passed.
