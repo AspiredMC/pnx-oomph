@@ -253,20 +253,7 @@ func (p *Player) handleBlockActions(pk *packet.PlayerAuthInput) {
 			p.Dbg.Notify(DebugModeBlockBreaking, true, "blockAction=%v", action)
 			switch action.Action {
 			case protocol.PlayerActionPredictDestroyBlock:
-				if !isFullServerAuthBlockBreaking || p.worldUpdater.BlockBreakPos() == nil {
-					p.Dbg.Notify(
-						DebugModeBlockBreaking,
-						true,
-						"ignored PlayerActionPredictDestroyBlock (isFullServerAuthBlockBreaking=%v, blockBreakPos=%v)",
-						isFullServerAuthBlockBreaking,
-						p.worldUpdater.BlockBreakPos(),
-					)
-					continue
-				}
-
-				if !p.tryBreakBlock(cube.Face(action.Face)) {
-					continue
-				}
+				p.worldUpdater.SetBlockBreakPos(&action.BlockPos)
 				p.blockBreakProgress = 0.0
 				p.blockBreakInProgress = false
 				p.Dbg.Notify(DebugModeBlockBreaking, true, "(PlayerActionPredictDestroyBlock) accepted block break at %v", action.BlockPos)
@@ -318,12 +305,7 @@ func (p *Player) handleBlockActions(pk *packet.PlayerAuthInput) {
 				p.blockBreakInProgress = false
 			case protocol.PlayerActionStopBreak:
 				if p.worldUpdater.BlockBreakPos() == nil {
-					p.Dbg.Notify(DebugModeBlockBreaking, true, "ignored PlayerActionStopBreak (blockBreakPos is nil)")
-					continue
-				}
-
-				if !p.tryBreakBlock(cube.Face(action.Face)) {
-					continue
+					p.worldUpdater.SetBlockBreakPos(&action.BlockPos)
 				}
 				p.blockBreakProgress = 0.0
 				p.blockBreakInProgress = false
