@@ -57,7 +57,9 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 	if generated {
 		cfg.Log.Info("generated a NetherNet identity; keep this file to preserve client trust", "file", identityFile)
 	}
-	server, err := endpoint.Serve(cfg.LocalAddress)
+	server, err := (endpoint.HandlerConfig{
+		Credentials: netherNetCredentialsProvider(cfg.NetherNetCredentials),
+	}).Serve(cfg.LocalAddress)
 	if err != nil {
 		return nil, fmt.Errorf("proxy: start signaling server: %w", err)
 	}

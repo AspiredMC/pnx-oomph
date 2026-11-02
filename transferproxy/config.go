@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/df-mc/go-nethernet"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -29,6 +30,9 @@ type Config struct {
 	NetherNetIdentityFile string
 	// NetherNetIdentityDomain is shown to players on first join; empty defaults to "self".
 	NetherNetIdentityDomain string
+	// NetherNetCredentials supplies additional ICE servers, such as TURN relays.
+	// The proxy always includes its default public STUN servers as well.
+	NetherNetCredentials func(context.Context) (*nethernet.Credentials, error)
 }
 
 // DialFunc establishes and logs into a backend, stopping before DoSpawn.

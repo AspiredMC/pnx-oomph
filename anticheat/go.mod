@@ -13,6 +13,7 @@ replace github.com/sandertv/gophertunnel => ../../gophertunnel
 require (
 	github.com/chewxy/math32 v1.11.1
 	github.com/df-mc/dragonfly v0.10.14-0.20260508142332-b4a4d55303f9
+	github.com/df-mc/go-nethernet v1.0.26
 	github.com/ethaniccc/float32-cube v0.0.0-20250511224129-7af1f8c4ee12
 	github.com/go-gl/mathgl v1.2.0
 	github.com/hjson/hjson-go/v4 v4.6.0
@@ -28,7 +29,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
-	github.com/df-mc/go-nethernet v1.0.26 // indirect
 	github.com/df-mc/go-playfab/v2 v2.0.2 // indirect
 	github.com/df-mc/go-xsapi/v2 v2.0.3 // indirect
 	github.com/df-mc/goleveldb v1.1.9 // indirect

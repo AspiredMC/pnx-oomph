@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/df-mc/go-nethernet"
 	"github.com/oomph-ac/oomph/anticheat/player"
 	"github.com/oomph-ac/oomph/anticheat/player/component"
 	playercontext "github.com/oomph-ac/oomph/anticheat/player/context"
@@ -43,6 +44,8 @@ type Config struct {
 	NetherNetIdentityFile string
 	// NetherNetIdentityDomain is shown to players on first join; empty defaults to "self".
 	NetherNetIdentityDomain string
+	// NetherNetCredentials supplies additional ICE servers, such as TURN relays.
+	NetherNetCredentials func(context.Context) (*nethernet.Credentials, error)
 }
 
 // Listen starts a native Oomph proxy.
@@ -62,6 +65,7 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 		},
 		NetherNetIdentityFile:   cfg.NetherNetIdentityFile,
 		NetherNetIdentityDomain: cfg.NetherNetIdentityDomain,
+		NetherNetCredentials:    cfg.NetherNetCredentials,
 	})
 }
 
