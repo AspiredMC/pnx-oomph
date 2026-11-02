@@ -7,6 +7,7 @@ replace github.com/sandertv/go-raknet => ../../go-raknet
 replace github.com/sandertv/gophertunnel => ../../gophertunnel
 
 require (
+	github.com/df-mc/go-nethernet v1.0.26
 	github.com/google/uuid v1.6.0
 	github.com/sandertv/gophertunnel v1.59.0
 )
@@ -14,7 +15,6 @@ require (
 require (
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
-	github.com/df-mc/go-nethernet v1.0.26 // indirect
 	github.com/df-mc/go-playfab/v2 v2.0.2 // indirect
 	github.com/df-mc/go-xsapi/v2 v2.0.3 // indirect
 	github.com/df-mc/jsonc v1.0.5 // indirect

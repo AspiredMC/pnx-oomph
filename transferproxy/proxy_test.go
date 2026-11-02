@@ -17,7 +17,7 @@ import (
 )
 
 func TestDefaultDialPreservesXBLIdentityData(t *testing.T) {
-	listener, err := (minecraft.ListenConfig{AuthenticationDisabled: true}).Listen("nethernet", "127.0.0.1:0")
+	listener, err := (minecraft.ListenConfig{AuthenticationDisabled: true}).Listen("raknet", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestDefaultDialPreservesXBLIdentityData(t *testing.T) {
 		Identity:    uuid.NewString(),
 		XUID:        "2533274790395904",
 	}
-	backend, err := defaultDial(5*time.Second)(context.Background(), nethernetAddress(listener.Addr().String()), want, login.ClientData{}, "")
+	backend, err := defaultDial(5*time.Second)(context.Background(), listener.Addr().String(), want, login.ClientData{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,14 +66,14 @@ func TestDefaultDialPreservesXBLIdentityData(t *testing.T) {
 func TestDefaultDialHonoursContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err := defaultDial(time.Second)(ctx, "http://127.0.0.1:1", login.IdentityData{}, login.ClientData{}, "")
+	_, err := defaultDial(time.Second)(ctx, "127.0.0.1:1", login.IdentityData{}, login.ClientData{}, "")
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("defaultDial() error = %v, want context.Canceled", err)
 	}
 }
 
 func TestDefaultDialAutomaticallyFlushesPackets(t *testing.T) {
-	listener, err := (minecraft.ListenConfig{AuthenticationDisabled: true}).Listen("nethernet", "127.0.0.1:0")
+	listener, err := (minecraft.ListenConfig{AuthenticationDisabled: true}).Listen("raknet", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestDefaultDialAutomaticallyFlushesPackets(t *testing.T) {
 		startErr <- server.StartGame(minecraft.GameData{EntityRuntimeID: 1, EntityUniqueID: 2})
 	}()
 
-	backend, err := defaultDial(5*time.Second)(context.Background(), nethernetAddress(listener.Addr().String()), login.IdentityData{}, login.ClientData{}, "")
+	backend, err := defaultDial(5*time.Second)(context.Background(), listener.Addr().String(), login.IdentityData{}, login.ClientData{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

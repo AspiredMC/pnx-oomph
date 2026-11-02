@@ -26,12 +26,12 @@ type NetherNetStatusProvider struct {
 }
 
 // NewNetherNetStatusProvider creates a status provider for a NetherNet backend.
-// Bare host:port addresses are treated as HTTP signaling URLs.
+// Bare host:port addresses are treated as HTTPS signaling URLs.
 func NewNetherNetStatusProvider(address string) (*NetherNetStatusProvider, error) {
 	if address != "" && !strings.Contains(address, "://") {
-		address = "http://" + address
+		address = "https://" + address
 	}
-	if err := validateNetherNetAddress(address); err != nil {
+	if err := validateNetherNetStatusAddress(address); err != nil {
 		return nil, err
 	}
 	return newNetherNetStatusProvider(address, minecraft.NetherNet{}.PingContext), nil
@@ -50,7 +50,7 @@ func newNetherNetStatusProvider(address string, ping func(context.Context, strin
 	return provider
 }
 
-func validateNetherNetAddress(address string) error {
+func validateNetherNetStatusAddress(address string) error {
 	u, err := url.Parse(address)
 	if err != nil {
 		return fmt.Errorf("invalid NetherNet status address %q: %w", address, err)

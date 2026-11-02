@@ -67,12 +67,11 @@ func main() {
 	startPprof()
 	configureRuntime()
 
-	status, err := proxy.NewNetherNetStatusProvider(remoteAddress)
+	status, err := minecraft.NewForeignStatusProvider(remoteAddress)
 	if err != nil {
 		slog.Error("unable to create status provider", "error", err)
 		return
 	}
-	defer status.Close()
 	packs := loadResourcePacks()
 	utils.InitializeBlockNameMapping()
 
@@ -178,12 +177,11 @@ func dialBackends(backup string, timeout time.Duration) proxy.DialFunc {
 		for _, address := range backendAddresses(primary, backup) {
 			dialCtx, cancel := context.WithTimeout(ctx, timeout)
 			conn, err := (minecraft.Dialer{
-				IdentityData:         identity,
-				ClientData:           client,
-				KeepXBLIdentityData:  true,
-				FlushRate:            -1,
-				DisablePortFollowing: true,
-			}).DialContext(dialCtx, "nethernet", nethernetAddress(address))
+				IdentityData:        identity,
+				ClientData:          client,
+				KeepXBLIdentityData: true,
+				FlushRate:           -1,
+			}).DialContext(dialCtx, "raknet", address)
 			cancel()
 			if err == nil {
 				return conn, nil

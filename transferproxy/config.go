@@ -12,9 +12,9 @@ import (
 
 // Config configures a standalone Bedrock proxy.
 type Config struct {
-	// LocalAddress is the local HTTP signaling address for NetherNet, such as ":19132".
+	// LocalAddress is the local HTTP signaling address to listen on, such as ":19132".
 	LocalAddress string
-	// RemoteAddress is the NetherNet signaling URL, such as "https://example.com:19132".
+	// RemoteAddress is the backend address passed to Dial or the default RakNet dialer.
 	RemoteAddress string
 	Log           *slog.Logger
 	Listen        minecraft.ListenConfig
@@ -23,6 +23,12 @@ type Config struct {
 
 	// Dial may be set by advanced users to customise backend connections.
 	Dial DialFunc
+
+	// NetherNetIdentityFile is the persistent PEM identity key file. If empty,
+	// the proxy creates and reuses Keys/identity.pem.
+	NetherNetIdentityFile string
+	// NetherNetIdentityDomain is shown to players on first join; empty defaults to "self".
+	NetherNetIdentityDomain string
 }
 
 // DialFunc establishes and logs into a backend, stopping before DoSpawn.
@@ -43,10 +49,9 @@ func defaultDial(timeout time.Duration) DialFunc {
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		return minecraft.Dialer{
-			IdentityData:         identity,
-			ClientData:           client,
-			KeepXBLIdentityData:  true,
-			DisablePortFollowing: true,
-		}.DialContext(ctx, "nethernet", nethernetAddress(address))
+			IdentityData:        identity,
+			ClientData:          client,
+			KeepXBLIdentityData: true,
+		}.DialContext(ctx, "raknet", address)
 	}
 }

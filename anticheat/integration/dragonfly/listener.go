@@ -21,7 +21,7 @@ import (
 
 // Config configures the native Oomph listener used by Dragonfly.
 type Config struct {
-	// Address is the local NetherNet signaling address to listen on, such as ":19132".
+	// Address is the local RakNet address to listen on, such as ":19132".
 	Address string
 	// AcceptedProtocols optionally restricts the Bedrock protocol versions that
 	// may connect. An empty slice accepts gophertunnel's current protocol.
@@ -60,7 +60,7 @@ func Listener(ctx context.Context, cfg Config) func(server.Config) (server.Liste
 		if log.Enabled(ctx, slog.LevelDebug) {
 			listenCfg.ErrorLog = log.With("net_origin", "gophertunnel")
 		}
-		raw, err := listenCfg.Listen("nethernet", cfg.Address)
+		raw, err := listenCfg.Listen("raknet", cfg.Address)
 		if err != nil {
 			return nil, fmt.Errorf("dragonfly integration: listen: %w", err)
 		}

@@ -38,6 +38,11 @@ type Config struct {
 
 	// Dial may be set to customise backend connections.
 	Dial DialFunc
+
+	// NetherNetIdentityFile configures the persistent PEM identity key file.
+	NetherNetIdentityFile string
+	// NetherNetIdentityDomain is shown to players on first join; empty defaults to "self".
+	NetherNetIdentityDomain string
 }
 
 // Listen starts a native Oomph proxy.
@@ -55,6 +60,8 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 			}
 			return &oomphHandler{player: pl}
 		},
+		NetherNetIdentityFile:   cfg.NetherNetIdentityFile,
+		NetherNetIdentityDomain: cfg.NetherNetIdentityDomain,
 	})
 }
 

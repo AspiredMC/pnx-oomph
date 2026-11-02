@@ -1,14 +1,17 @@
-// Package proxy provides a standalone Minecraft Bedrock NetherNet proxy.
+// Package proxy provides a standalone Bedrock proxy with a NetherNet listener.
 package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/df-mc/go-nethernet"
+	"github.com/df-mc/go-nethernet/endpoint"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -16,10 +19,12 @@ import (
 // Proxy accepts Bedrock clients and keeps them connected while their backend
 // connection is replaced during packet.Transfer handoffs.
 type Proxy struct {
-	cfg      Config
-	listener *minecraft.Listener
-	done     chan struct{}
-	closeOne sync.Once
+	cfg       Config
+	listener  *minecraft.Listener
+	signaling *endpoint.Handler
+	done      chan struct{}
+	closeOne  sync.Once
+	closeErr  error
 
 	batchReading bool
 }
@@ -29,7 +34,6 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 	if cfg.LocalAddress == "" || cfg.RemoteAddress == "" {
 		return nil, fmt.Errorf("proxy: local and remote addresses are required")
 	}
-	cfg.RemoteAddress = nethernetAddress(cfg.RemoteAddress)
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
@@ -42,11 +46,38 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 	if cfg.Listen.Compression == nil {
 		cfg.Listen.Compression = packet.SnappyCompression
 	}
-	l, err := cfg.Listen.Listen("nethernet", cfg.LocalAddress)
-	if err != nil {
-		return nil, fmt.Errorf("proxy: listen: %w", err)
+	identityFile := cfg.NetherNetIdentityFile
+	if identityFile == "" {
+		identityFile = filepath.Join("Keys", "identity.pem")
 	}
-	p := &Proxy{cfg: cfg, listener: l, done: make(chan struct{})}
+	identityKey, generated, err := ensureNetherNetIdentity(identityFile)
+	if err != nil {
+		return nil, err
+	}
+	if generated {
+		cfg.Log.Info("generated a NetherNet identity; keep this file to preserve client trust", "file", identityFile)
+	}
+	server, err := endpoint.Serve(cfg.LocalAddress)
+	if err != nil {
+		return nil, fmt.Errorf("proxy: start signaling server: %w", err)
+	}
+	domain := cfg.NetherNetIdentityDomain
+	if domain == "" {
+		domain = "self"
+	}
+	netherNetNetwork := minecraft.NetherNet{
+		Signaling: server,
+		ListenConfig: nethernet.ListenConfig{
+			IssueServerIdentity: func(context.Context) (*nethernet.Identity, error) {
+				return nethernet.ServerIdentity(identityKey, domain)
+			},
+		},
+	}
+	l, err := cfg.Listen.ListenNetwork(netherNetNetwork, server.NetworkID())
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("proxy: listen: %w", err), server.Close())
+	}
+	p := &Proxy{cfg: cfg, listener: l, signaling: server, done: make(chan struct{})}
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -55,13 +86,6 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 		}
 	}()
 	return p, nil
-}
-
-func nethernetAddress(address string) string {
-	if address != "" && !strings.Contains(address, "://") {
-		return "http://" + address
-	}
-	return address
 }
 
 // Serve accepts clients until the proxy is closed.
@@ -116,10 +140,9 @@ func (p *Proxy) serveClient(ctx context.Context, conn *minecraft.Conn) error {
 
 // Close stops accepting new clients.
 func (p *Proxy) Close() error {
-	var err error
 	p.closeOne.Do(func() {
 		close(p.done)
-		err = p.listener.Close()
+		p.closeErr = errors.Join(p.listener.Close(), p.signaling.Close())
 	})
-	return err
+	return p.closeErr
 }

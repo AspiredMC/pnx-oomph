@@ -6,7 +6,7 @@ import (
 )
 
 func TestNetherNetStatusProviderUsesPingFunction(t *testing.T) {
-	const address = "http://example.test:19132"
+	const address = "https://example.test:19132"
 	provider := newNetherNetStatusProvider(address, func(_ context.Context, got string) ([]byte, error) {
 		if got != address {
 			t.Errorf("ping address = %q, want %q", got, address)
@@ -27,8 +27,8 @@ func TestNewNetherNetStatusProviderNormalizesAndValidatesAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if provider.address != "http://example.test:19132" {
-		t.Fatalf("provider address = %q, want HTTP URL", provider.address)
+	if provider.address != "https://example.test:19132" {
+		t.Fatalf("provider address = %q, want HTTPS URL", provider.address)
 	}
 	if err := provider.Close(); err != nil {
 		t.Fatal(err)
@@ -36,9 +36,9 @@ func TestNewNetherNetStatusProviderNormalizesAndValidatesAddress(t *testing.T) {
 
 	for _, address := range []string{
 		"ftp://example.test:19132",
-		"http://example.test:19132/path",
-		"http://example.test:19132?query",
-		"http://example.test:65536",
+		"https://example.test:19132/path",
+		"https://example.test:19132?query",
+		"https://example.test:65536",
 	} {
 		if _, err := NewNetherNetStatusProvider(address); err == nil {
 			t.Errorf("NewNetherNetStatusProvider(%q) succeeded, want invalid address error", address)

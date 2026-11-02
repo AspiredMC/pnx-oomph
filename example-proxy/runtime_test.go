@@ -31,10 +31,10 @@ func TestBackendAddresses(t *testing.T) {
 }
 
 func TestConfiguredRemoteAddress(t *testing.T) {
-	if got, want := configuredRemoteAddress("configured:19132", ""), "http://configured:19132"; got != want {
+	if got, want := configuredRemoteAddress("configured:19132", ""), "configured:19132"; got != want {
 		t.Fatalf("configured remote address = %q, want %q", got, want)
 	}
-	if got, want := configuredRemoteAddress("configured:19132", "override:19132"), "http://override:19132"; got != want {
+	if got, want := configuredRemoteAddress("configured:19132", "override:19132"), "override:19132"; got != want {
 		t.Fatalf("overridden remote address = %q, want %q", got, want)
 	}
 }
