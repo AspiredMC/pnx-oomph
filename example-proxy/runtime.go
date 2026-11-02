@@ -19,10 +19,18 @@ func loadModerators(r io.Reader) (map[string]struct{}, error) {
 }
 
 func configuredRemoteAddress(configured, override string) string {
+	address := configured
 	if override != "" {
-		return override
+		address = override
 	}
-	return configured
+	return nethernetAddress(address)
+}
+
+func nethernetAddress(address string) string {
+	if address != "" && !strings.Contains(address, "://") {
+		return "http://" + address
+	}
+	return address
 }
 
 func backendAddresses(primary, backup string) []string {

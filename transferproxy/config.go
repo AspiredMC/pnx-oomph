@@ -12,16 +12,16 @@ import (
 
 // Config configures a standalone Bedrock proxy.
 type Config struct {
-	LocalAddress  string
+	// LocalAddress is the local HTTP signaling address for NetherNet, such as ":19132".
+	LocalAddress string
+	// RemoteAddress is the NetherNet signaling URL, such as "https://example.com:19132".
 	RemoteAddress string
 	Log           *slog.Logger
 	Listen        minecraft.ListenConfig
 	DialTimeout   time.Duration
 	NewHandler    HandlerFactory
 
-	// Dial may be set by advanced users to customise backend connections. When
-	// Listen.EnableBatchReading is set, backend connections must be dialed with batch reading
-	// enabled as well, as the proxy reads from them with ReadBatch.
+	// Dial may be set by advanced users to customise backend connections.
 	Dial DialFunc
 }
 
@@ -34,20 +34,19 @@ type Backend interface {
 	WritePacket(packet.Packet) error
 	Close() error
 	ReadPacket() (packet.Packet, error)
-	ReadBatch() ([]packet.Packet, error)
 	DoSpawn() error
 	Flush() error
 }
 
-func defaultDial(timeout time.Duration, batchReading bool) DialFunc {
+func defaultDial(timeout time.Duration) DialFunc {
 	return func(ctx context.Context, address string, identity login.IdentityData, client login.ClientData, _ string) (Backend, error) {
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		return minecraft.Dialer{
-			IdentityData:        identity,
-			ClientData:          client,
-			KeepXBLIdentityData: true,
-			EnableBatchReading:  batchReading,
-		}.DialContext(ctx, "raknet", address)
+			IdentityData:         identity,
+			ClientData:           client,
+			KeepXBLIdentityData:  true,
+			DisablePortFollowing: true,
+		}.DialContext(ctx, "nethernet", nethernetAddress(address))
 	}
 }

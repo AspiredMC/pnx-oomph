@@ -313,7 +313,7 @@ func (p *Player) handleMovement(pk *packet.PlayerAuthInput) {
 	velDiff := p.movement.Vel().Sub(p.movement.Client().Vel())
 
 	needsCorrection := posDiff.Len() > p.Opts().Movement.CorrectionThreshold
-	if needsCorrection && (p.movementTouchesUnknownBlock() || p.hasJumpBoost()) {
+	if needsCorrection && (p.movementTouchesUnknownBlock() || p.hasJumpBoost() || p.CustomEnchantExempt) {
 		p.movement.SetPos(p.movement.Client().Pos())
 		p.movement.SetVel(p.movement.Client().Vel())
 		p.movement.SetCorrectionCooldown(false)

@@ -44,6 +44,11 @@ func (d *InvMoveA) Metadata() *player.DetectionMetadata {
 }
 
 func (d *InvMoveA) Detect(pk packet.Packet) {
+	if d.mPlayer.CustomEnchantExempt {
+		d.preFlag = false
+		return
+	}
+
 	if _, ok := pk.(*packet.ItemStackRequest); ok {
 		d.preFlag = d.mPlayer.Movement().Impulse().LenSqr() > 0.0
 	} else if _, ok := pk.(*packet.PlayerAuthInput); ok {

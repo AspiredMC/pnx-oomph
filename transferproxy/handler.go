@@ -18,8 +18,8 @@ type HandlerContext struct {
 
 // Handler integrates optional processing with the proxy session. Packet methods receive a
 // PacketContext per packet: cancelling it prevents that packet from being forwarded, and
-// SetPacket replaces the packet that is forwarded. The batch variants are called instead of the
-// single-packet variants when the proxy reads packets in batches (Listen.EnableBatchReading).
+// SetPacket replaces the packet that is forwarded. Batch variants are used only by connections
+// that expose the optional batch-reading API.
 type Handler interface {
 	Start(Backend) error
 	HandleClientPacket(*PacketContext)

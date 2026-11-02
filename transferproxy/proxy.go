@@ -1,10 +1,11 @@
-// Package proxy provides a standalone Minecraft Bedrock RakNet proxy.
+// Package proxy provides a standalone Minecraft Bedrock NetherNet proxy.
 package proxy
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 	if cfg.LocalAddress == "" || cfg.RemoteAddress == "" {
 		return nil, fmt.Errorf("proxy: local and remote addresses are required")
 	}
+	cfg.RemoteAddress = nethernetAddress(cfg.RemoteAddress)
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
@@ -35,16 +37,16 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 		cfg.DialTimeout = 10 * time.Second
 	}
 	if cfg.Dial == nil {
-		cfg.Dial = defaultDial(cfg.DialTimeout, cfg.Listen.EnableBatchReading)
+		cfg.Dial = defaultDial(cfg.DialTimeout)
 	}
 	if cfg.Listen.Compression == nil {
 		cfg.Listen.Compression = packet.SnappyCompression
 	}
-	l, err := cfg.Listen.Listen("raknet", cfg.LocalAddress)
+	l, err := cfg.Listen.Listen("nethernet", cfg.LocalAddress)
 	if err != nil {
 		return nil, fmt.Errorf("proxy: listen: %w", err)
 	}
-	p := &Proxy{cfg: cfg, listener: l, done: make(chan struct{}), batchReading: cfg.Listen.EnableBatchReading}
+	p := &Proxy{cfg: cfg, listener: l, done: make(chan struct{})}
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -53,6 +55,13 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 		}
 	}()
 	return p, nil
+}
+
+func nethernetAddress(address string) string {
+	if address != "" && !strings.Contains(address, "://") {
+		return "http://" + address
+	}
+	return address
 }
 
 // Serve accepts clients until the proxy is closed.

@@ -44,6 +44,10 @@ func (d *BadPacketF) Metadata() *player.DetectionMetadata {
 }
 
 func (d *BadPacketF) Detect(pk packet.Packet) {
+	if d.mPlayer.CustomEnchantExempt {
+		return
+	}
+
 	switch pk := pk.(type) {
 	case *packet.InventoryTransaction:
 		switch dat := pk.TransactionData.(type) {

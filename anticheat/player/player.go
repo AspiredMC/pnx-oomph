@@ -140,6 +140,8 @@ type Player struct {
 	consumedSlot int
 	// JumpBoostExempt disables movement corrections while jump boost is active.
 	JumpBoostExempt bool
+	// CustomEnchantExempt disables strict prediction paths once downstream custom enchantment NBT is seen.
+	CustomEnchantExempt bool
 
 	// conn is the connection to the client, and serverConn is the connection to the server.
 	conn       *minecraft.Conn

@@ -36,17 +36,12 @@ type Config struct {
 	DialTimeout   time.Duration
 	Configure     func(*player.Player)
 
-	// Dial may be set to customise backend connections. Backend connections must be dialed with
-	// batch reading enabled (minecraft.Dialer.EnableBatchReading), as the Oomph proxy always
-	// reads packets in batches.
+	// Dial may be set to customise backend connections.
 	Dial DialFunc
 }
 
 // Listen starts a native Oomph proxy.
 func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
-	// Oomph always processes packets in batches so that each read batch is handled under a
-	// single processing lock acquisition.
-	cfg.Listen.EnableBatchReading = true
 	return proxycore.Listen(ctx, proxycore.Config{
 		LocalAddress: cfg.LocalAddress, RemoteAddress: cfg.RemoteAddress,
 		Log: cfg.Log, Listen: cfg.Listen, DialTimeout: cfg.DialTimeout, Dial: cfg.Dial,

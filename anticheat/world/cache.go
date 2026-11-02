@@ -65,7 +65,7 @@ func CacheSubChunk(payload *bytes.Buffer, c *chunk.Chunk, pos protocol.ChunkPos,
 		return nil, err
 	}
 	if codec.Mode() == blocknetwork.Hashes {
-		decodedSC.ConvertBlockNetworkHashesToRuntimeIDs(BlockRegistry)
+		convertSubChunkBlockIDs(decodedSC, codec.ToRuntimeID)
 	}
 
 	cachedSC := &CachedSubChunk{hash: hash, layer: index, sc: decodedSC}
@@ -102,7 +102,7 @@ func CacheChunk(input *packet.LevelChunk, codec blocknetwork.Codec) (ChunkInfo, 
 		return ChunkInfo{}, err
 	}
 	if codec.Mode() == blocknetwork.Hashes {
-		decodedChunk.ConvertBlockNetworkHashesToRuntimeIDs()
+		convertChunkBlockIDs(decodedChunk, codec.ToRuntimeID)
 	}
 	//decodedChunk.CompactForRuntimeCache()
 
@@ -125,14 +125,10 @@ func ReencodeLevelChunk(input *packet.LevelChunk, codec blocknetwork.Codec) erro
 		return err
 	}
 	if codec.Mode() == blocknetwork.Hashes {
-		decoded.ConvertBlockNetworkHashesToRuntimeIDs()
+		convertChunkBlockIDs(decoded, codec.ToRuntimeID)
+		convertChunkBlockIDs(decoded, codec.FromRuntimeID)
 	}
-	var data chunk.SerialisedData
-	if codec.Mode() == blocknetwork.Hashes {
-		data = chunk.EncodeWithBlockNetworkHashes(decoded)
-	} else {
-		data = chunk.Encode(decoded, chunk.NetworkEncoding)
-	}
+	data := chunk.Encode(decoded, chunk.NetworkEncoding)
 	out := bytes.NewBuffer(make([]byte, 0, len(input.RawPayload)))
 	for _, sub := range data.SubChunks {
 		out.Write(sub)
@@ -142,6 +138,26 @@ func ReencodeLevelChunk(input *packet.LevelChunk, codec blocknetwork.Codec) erro
 	input.RawPayload = out.Bytes()
 	input.SubChunkCount = uint32(len(data.SubChunks))
 	return nil
+}
+
+func convertChunkBlockIDs(c *chunk.Chunk, convert func(uint32) (uint32, bool)) {
+	for _, sub := range c.Sub() {
+		convertSubChunkBlockIDs(sub, convert)
+	}
+}
+
+func convertSubChunkBlockIDs(sub *chunk.SubChunk, convert func(uint32) (uint32, bool)) {
+	for _, storage := range sub.Layers() {
+		if storage == nil {
+			continue
+		}
+		storage.Palette().Replace(func(id uint32) uint32 {
+			if converted, ok := convert(id); ok {
+				return converted
+			}
+			return id
+		})
+	}
 }
 
 type CachedSubChunk struct {

@@ -411,12 +411,7 @@ func newUnknownAction(mPlayer *player.Player, originalAction string) *unknownAct
 
 func (a *unknownAction) execute() {}
 
-func (a *unknownAction) revert() {
-	if mPlayer := a.mPlayer.Load(); mPlayer != nil {
-		mPlayer.Log().Debug("unhandled action - force syncing inventory", "action", a.originalAction)
-		mPlayer.Inventory().ForceSync()
-	}
-}
+func (a *unknownAction) revert() {}
 
 func (a *unknownAction) close() {
 	a.mPlayer.Store(nil)

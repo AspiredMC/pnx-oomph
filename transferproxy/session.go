@@ -13,7 +13,6 @@ import (
 
 type clientConn interface {
 	ReadPacket() (packet.Packet, error)
-	ReadBatch() ([]packet.Packet, error)
 	WritePacket(packet.Packet) error
 	StartGame(minecraft.GameData) error
 	RemoteAddr() net.Addr
@@ -145,8 +144,14 @@ func (s *session) clientLoop() error {
 }
 
 func (s *session) clientBatchLoop() error {
+	client, ok := s.client.(interface {
+		ReadBatch() ([]packet.Packet, error)
+	})
+	if !ok {
+		return fmt.Errorf("proxy: client connection does not support batch reads")
+	}
 	for {
-		pks, err := s.client.ReadBatch()
+		pks, err := client.ReadBatch()
 		if err != nil {
 			return err
 		}
@@ -210,7 +215,13 @@ func (s *session) backendBatchLoop(ctx context.Context) error {
 	consecutiveReadFailures := 0
 	for {
 		backend, generation := s.currentBackend()
-		pks, err := backend.ReadBatch()
+		batchBackend, ok := backend.(interface {
+			ReadBatch() ([]packet.Packet, error)
+		})
+		if !ok {
+			return fmt.Errorf("proxy: backend connection does not support batch reads")
+		}
+		pks, err := batchBackend.ReadBatch()
 		if err != nil {
 			consecutiveReadFailures, err = s.recoverBackendRead(ctx, backend, generation, consecutiveReadFailures, err)
 			if err != nil {
