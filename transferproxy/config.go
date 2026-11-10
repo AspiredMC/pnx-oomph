@@ -33,6 +33,9 @@ type Config struct {
 	// NetherNetCredentials supplies additional ICE servers, such as TURN relays.
 	// The proxy always includes its default public STUN servers as well.
 	NetherNetCredentials func(context.Context) (*nethernet.Credentials, error)
+	// NetherNetListenConfig customises ICE gathering and transport startup.
+	// The proxy supplies the server identity when IssueServerIdentity is nil.
+	NetherNetListenConfig nethernet.ListenConfig
 }
 
 // DialFunc establishes and logs into a backend, stopping before DoSpawn.

@@ -6,15 +6,94 @@ import (
 	"log/slog"
 	"math"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/df-mc/go-nethernet"
+	"github.com/df-mc/go-nethernet/endpoint"
 	"github.com/google/uuid"
+	"github.com/pion/webrtc/v4"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
+
+func TestNetherNetListenConfigControlsTransport(t *testing.T) {
+	settings := webrtc.SettingEngine{}
+	settings.SetIncludeLoopbackCandidate(true)
+	settings.SetIPFilter(net.IP.IsLoopback)
+	settings.SetSTUNGatherTimeout(50 * time.Millisecond)
+	// Delayed nomination must outlive NetherNet's default five-second transport timeout.
+	settings.SetHostAcceptanceMinWait(6 * time.Second)
+	settings.SetPrflxAcceptanceMinWait(6 * time.Second)
+	api := webrtc.NewAPI(webrtc.WithSettingEngine(settings))
+	negotiated := make(chan struct{}, 2)
+	started := make(chan struct{}, 1)
+	p, err := Listen(t.Context(), Config{
+		LocalAddress:          "127.0.0.1:0",
+		RemoteAddress:         "unused:19133",
+		NetherNetIdentityFile: filepath.Join(t.TempDir(), "identity.pem"),
+		NetherNetListenConfig: nethernet.ListenConfig{
+			API:            api,
+			AllowAnonymous: true,
+			NegotiationContext: func(parent context.Context) (context.Context, context.CancelFunc) {
+				negotiated <- struct{}{}
+				return context.WithTimeout(parent, 10*time.Second)
+			},
+			ConnContext: func(parent context.Context, _ *nethernet.Conn) (context.Context, context.CancelFunc) {
+				started <- struct{}{}
+				return context.WithTimeout(parent, 10*time.Second)
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Close() }()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	conn, err := (nethernet.Dialer{API: api}).DialContext(ctx, "http://"+p.signaling.Addr().String(), endpoint.NewClient())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	for range 2 {
+		select {
+		case <-negotiated:
+		default:
+			t.Fatal("configured negotiation context was not used by both HTTP signaling and listener")
+		}
+	}
+	select {
+	case <-started:
+	default:
+		t.Fatal("configured transport context was not used")
+	}
+}
+
+func TestHTTPSignalingIgnoresCompletedErrorSignals(t *testing.T) {
+	sig := httpSignaling{Handler: endpoint.NewHandler()}
+	err := sig.Signal(t.Context(), &nethernet.Signal{
+		Type:         nethernet.SignalTypeError,
+		NetworkID:    "7160807282326506659",
+		ConnectionID: 3740330149946289470,
+		Data:         "15",
+	})
+	if err != nil {
+		t.Fatalf("post-answer error signal returned %v, want nil", err)
+	}
+	err = sig.Signal(t.Context(), &nethernet.Signal{
+		Type:         nethernet.SignalTypeAnswer,
+		NetworkID:    "7160807282326506659",
+		ConnectionID: 3740330149946289470,
+	})
+	if err == nil {
+		t.Fatal("expected unexpected connection ID error for non-error signal")
+	}
+}
 
 func TestDefaultDialPreservesXBLIdentityData(t *testing.T) {
 	listener, err := (minecraft.ListenConfig{AuthenticationDisabled: true}).Listen("raknet", "127.0.0.1:0")

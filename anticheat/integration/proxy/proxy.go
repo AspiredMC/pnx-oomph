@@ -46,6 +46,8 @@ type Config struct {
 	NetherNetIdentityDomain string
 	// NetherNetCredentials supplies additional ICE servers, such as TURN relays.
 	NetherNetCredentials func(context.Context) (*nethernet.Credentials, error)
+	// NetherNetListenConfig customises ICE gathering and transport startup.
+	NetherNetListenConfig nethernet.ListenConfig
 }
 
 // Listen starts a native Oomph proxy.
@@ -66,6 +68,7 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 		NetherNetIdentityFile:   cfg.NetherNetIdentityFile,
 		NetherNetIdentityDomain: cfg.NetherNetIdentityDomain,
 		NetherNetCredentials:    cfg.NetherNetCredentials,
+		NetherNetListenConfig:   cfg.NetherNetListenConfig,
 	})
 }
 

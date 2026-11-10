@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,8 +58,13 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 	if generated {
 		cfg.Log.Info("generated a NetherNet identity; keep this file to preserve client trust", "file", identityFile)
 	}
+	credentials := netherNetCredentialsProvider(cfg.NetherNetCredentials)
+	if cfg.NetherNetListenConfig.API != nil {
+		credentials = cfg.NetherNetCredentials
+	}
 	server, err := (endpoint.HandlerConfig{
-		Credentials: netherNetCredentialsProvider(cfg.NetherNetCredentials),
+		Credentials:        credentials,
+		NegotiationContext: cfg.NetherNetListenConfig.NegotiationContext,
 	}).Serve(cfg.LocalAddress)
 	if err != nil {
 		return nil, fmt.Errorf("proxy: start signaling server: %w", err)
@@ -68,12 +74,13 @@ func Listen(ctx context.Context, cfg Config) (*Proxy, error) {
 		domain = "self"
 	}
 	netherNetNetwork := minecraft.NetherNet{
-		Signaling: server,
-		ListenConfig: nethernet.ListenConfig{
-			IssueServerIdentity: func(context.Context) (*nethernet.Identity, error) {
-				return nethernet.ServerIdentity(identityKey, domain)
-			},
-		},
+		Signaling:    httpSignaling{Handler: server},
+		ListenConfig: cfg.NetherNetListenConfig,
+	}
+	if netherNetNetwork.ListenConfig.IssueServerIdentity == nil {
+		netherNetNetwork.ListenConfig.IssueServerIdentity = func(context.Context) (*nethernet.Identity, error) {
+			return nethernet.ServerIdentity(identityKey, domain)
+		}
 	}
 	l, err := cfg.Listen.ListenNetwork(netherNetNetwork, server.NetworkID())
 	if err != nil {
@@ -147,4 +154,16 @@ func (p *Proxy) Close() error {
 		p.closeErr = errors.Join(p.listener.Close(), p.signaling.Close())
 	})
 	return p.closeErr
+}
+
+type httpSignaling struct {
+	*endpoint.Handler
+}
+
+func (s httpSignaling) Signal(ctx context.Context, signal *nethernet.Signal) error {
+	err := s.Handler.Signal(ctx, signal)
+	if err != nil && signal != nil && signal.Type == nethernet.SignalTypeError && strings.HasPrefix(err.Error(), "unexpected connection ID:") {
+		return nil
+	}
+	return err
 }
